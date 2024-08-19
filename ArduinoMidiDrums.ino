@@ -183,18 +183,18 @@ void recordNewPeak(short slot, short newPeak)
   if(prevPeakIndex < 0) prevPeakIndex = PEAK_BUFFER_SIZE-1;        
   unsigned short prevPeak = peakBuffer[slot][prevPeakIndex];
    
-  if(newPeak > prevPeak && (currentTime - lastNoteTime[slot])>MIN_TIME_BETWEEN_NOTES)
+  if(newPeak > prevPeak && (currentTime - lastNoteTime[slot])>MIN_TIME_BETWEEN_NOTES) //如果新峰值比上一个高，并且当前时间与上个音符演奏的时间间隔 大于 音符最小间隔时间
   {
-    noteReady[slot] = true;
+    noteReady[slot] = true; //将该音符设置为准备状态
     if(newPeak > noteReadyVelocity[slot])
-      noteReadyVelocity[slot] = newPeak;
+      noteReadyVelocity[slot] = newPeak; //更新当前峰值
   }
-  else if(newPeak < prevPeak && noteReady[slot])
+  else if(newPeak < prevPeak && noteReady[slot]) //如果新的峰值比上一个峰值小，并且该音符在准备播放
   {
-    noteFire(noteMap[slot], noteReadyVelocity[slot]);
-    noteReady[slot] = false;
-    noteReadyVelocity[slot] = 0;
-    lastNoteTime[slot] = currentTime;
+    noteFire(noteMap[slot], noteReadyVelocity[slot]); //播放该音符
+    noteReady[slot] = false; //重置该音符为不在准备状态
+    noteReadyVelocity[slot] = 0; //重置该音符演奏力度为0
+    lastNoteTime[slot] = currentTime;//更新上个音符演奏时间为当前
   }
   
   currentPeakIndex[slot]++;
