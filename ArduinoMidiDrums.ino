@@ -22,7 +22,7 @@
 
 //Piezo defines
 #define NUM_PIEZOS 6
-#define SNARE_THRESHOLD 30     //anything < TRIGGER_THRESHOLD is treated as 0
+#define SNARE_THRESHOLD 30     //当模拟输入电压小于这些值时，会被视为0
 #define LTOM_THRESHOLD 30
 #define RTOM_THRESHOLD 30
 #define LCYM_THRESHOLD 100
@@ -117,26 +117,27 @@ void loop()
   {
     //get a new signal from analog read
     unsigned short newSignal = analogRead(slotMap[i]);
+    //把接收到的模拟输入电压存储到该buffer中，该电压也代表演奏力度
     signalBuffer[i][currentSignalIndex[i]] = newSignal;
     
-    //if new signal is 0
+    //如果电压为0
     if(newSignal < thresholdMap[i])
     {
+      //如果之前有输入电压并且距离上次高峰值的时机已超过了高峰最大间隔时间
       if(!isLastPeakZeroed[i] && (currentTime - lastPeakTime[i]) > MAX_TIME_BETWEEN_PEAKS)
       {
         recordNewPeak(i,0);
       }
       else
       {
-        //get previous signal
+        //获取上一次的输入电压
         short prevSignalIndex = currentSignalIndex[i]-1;
         if(prevSignalIndex < 0) prevSignalIndex = SIGNAL_BUFFER_SIZE-1;        
         unsigned short prevSignal = signalBuffer[i][prevSignalIndex];
         
         unsigned short newPeak = 0;
         
-        //find the wave peak if previous signal was not 0 by going
-        //through previous signal values until another 0 is reached
+        //从上一次输入电压一直往前找，获取其中的最高峰，然后作为参数调用recordNewPeak
         while(prevSignal >= thresholdMap[i])
         {
           if(signalBuffer[i][prevSignalIndex] > newPeak)
@@ -162,15 +163,16 @@ void loop()
     if(currentSignalIndex[i] == SIGNAL_BUFFER_SIZE) currentSignalIndex[i] = 0;
   }
 }
-
+//输入音符和当前演奏力度，当演奏力度达到最高峰时演奏MIDI
 void recordNewPeak(short slot, short newPeak)
 {
+  //一旦检测到新高峰为0，则将该标志置为true，以避免不必要的计算
   isLastPeakZeroed[slot] = (newPeak == 0);
   
   unsigned long currentTime = millis();
+  //记录当前时间为上一次高峰的时间
   lastPeakTime[slot] = currentTime;
-  
-  //new peak recorded (newPeak)
+  // 把新高峰的值记录在数组中
   peakBuffer[slot][currentPeakIndex[slot]] = newPeak;
   
   //1 of 3 cases can happen:
@@ -178,7 +180,7 @@ void recordNewPeak(short slot, short newPeak)
   // 2) note fire - if new peak < previous peak and previous peak was a note ready
   // 3) no note - if new peak < previous peak and previous peak was NOT note ready
   
-  //get previous peak
+  //获取上一次的高峰
   short prevPeakIndex = currentPeakIndex[slot]-1;
   if(prevPeakIndex < 0) prevPeakIndex = PEAK_BUFFER_SIZE-1;        
   unsigned short prevPeak = peakBuffer[slot][prevPeakIndex];
@@ -197,8 +199,8 @@ void recordNewPeak(short slot, short newPeak)
     lastNoteTime[slot] = currentTime;//更新上个音符演奏时间为当前
   }
   
-  currentPeakIndex[slot]++;
-  if(currentPeakIndex[slot] == PEAK_BUFFER_SIZE) currentPeakIndex[slot] = 0;  
+  currentPeakIndex[slot]++; //每调用一次该函数，对应音符的高峰次数+1，主要用于peakBuffer
+  if(currentPeakIndex[slot] == PEAK_BUFFER_SIZE) currentPeakIndex[slot] = 0;  //如果高峰数量到达30，则重置
 }
 
 void noteFire(unsigned short note, unsigned short velocity)
